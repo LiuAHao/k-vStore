@@ -1,0 +1,215 @@
+### 基于 Raft 的分布式键值存储系统 C++ 框架设计
+
+#### 整体架构示意图
+```
++----------------+       RPC 通信        +----------------+
+|   Client       | <------------------> |   KvServer     |
++----------------+                       +----------------+
+                                           |  |  ▲
+                                           |  |  |
+                                           v  v  |
++----------------+       Raft 协议通信     +----------------+
+|   RaftNode     | <------------------> |   RaftNode     |
++----------------+                       +----------------+
+```
+
+---
+
+### 核心类定义及功能说明
+
+#### 1. `RaftNode` 类 - Raft 算法核心实现
+```cpp
+class RaftNode {
+private:
+    // Raft 持久化状态（需要落盘）
+    PersistentStorage storage; // 持久化存储对象
+    int currentTerm;           // 当前任期号
+    int votedFor;              // 本任期投票给谁
+    vector<LogEntry> log;      // 操作日志
+    
+    // Raft 易失性状态
+    int commitIndex;           // 已提交的日志索引
+    int lastApplied;           // 最后应用到状态机的索引
+    map<int, int> nextIndex;   // 每个 follower 的下一个发送位置
+    
+    // 网络通信
+    RpcClient rpcClient;       // RPC 客户端，用于向其他节点发送请求
+    RpcServer rpcServer;       // RPC 服务端，接收其他节点请求
+    
+    // 状态机
+    StateMachine* stateMachine; // 指向具体状态机（如键值存储）
+    
+public:
+    void startElection();      // 发起选举
+    void handleHeartbeat();     // 领导者发送心跳
+    void appendEntriesRPC();   // 处理日志追加请求
+    void requestVoteRPC();     // 处理投票请求
+    void applyCommittedLogs();  // 将已提交日志应用到状态机
+};
+```
+
+#### 2. `KvServer` 类 - 键值服务接口层
+```cpp
+class KvServer {
+private:
+    RaftNode& raftNode;        // 关联的 Raft 节点
+    KvStateMachine stateMachine; // 键值状态机
+    
+public:
+    // 客户端接口
+    string get(const string& key);
+    void set(const string& key, const string& value);
+    void deleteKey(const string& key);
+    
+    // RPC 处理接口
+    void handleClientRequest(const Request& req);
+};
+```
+
+#### 3. `KvStateMachine` 类 - 键值存储状态机
+```cpp
+class KvStateMachine : public StateMachine {
+private:
+    // 本地存储引擎（可选择 LevelDB/RocksDB/SQLite）
+    DB* database; 
+    
+public:
+    void apply(const LogEntry& entry) override {
+        // 执行具体操作：SET/GET/DELETE
+        if (entry.command.type == "SET") {
+            database->put(entry.key, entry.value);
+        } else if (...) {
+            // 处理其他操作
+        }
+    }
+    
+    string getSnapshot() { /* 生成快照 */ }
+    void applySnapshot() { /* 从快照恢复 */ }
+};
+```
+
+#### 4. `PersistentStorage` 类 - 持久化存储
+```cpp
+class PersistentStorage {
+public:
+    void saveTerm(int term);         // 保存当前任期
+    void saveVote(int candidateId);  // 保存投票记录
+    void saveLogs(const vector<LogEntry>& logs); // 保存日志
+    
+    int loadTerm();                  // 加载持久化数据
+    vector<LogEntry> loadLogs();
+};
+```
+
+#### 5. `RpcClient` / `RpcServer` 类 - 网络通信层
+```cpp
+class RpcClient {
+public:
+    void sendRequestVote(RaftNode* target);
+    void sendAppendEntries(RaftNode* target);
+};
+
+class RpcServer {
+public:
+    void registerHandler(RequestVoteHandler handler);
+    void startListening(int port);
+};
+```
+
+#### 6. LogEntry 类 - 日志条目
+```cpp
+// 操作类型枚举
+enum class Operation {
+    SET,
+    GET,
+    DELETE,
+    NOOP // 用于领导者心跳的空操作
+};
+
+class LogEntry {
+private:
+    int term;          // 日志对应的任期号（Raft 关键字段）
+    int index;         // 日志在全局的顺序索引
+    Operation op;      // 操作类型
+    string key;        // 操作的键（GET/SET/DELETE 时使用）
+    string value;      // 操作的值（仅 SET 时使用）
+    string clientId;   // 客户端标识（用于去重）
+    int64_t requestId; // 客户端请求唯一ID（用于幂等性）
+
+public:
+    // 序列化方法（用于网络传输和持久化）
+    std::string serialize() const {
+        // 可使用 Protocol Buffers、JSON 或二进制打包
+        // 示例伪代码（实际实现需要选择序列化库）：
+        return to_string(term) + "|" 
+             + to_string(index) + "|"
+             + to_string(static_cast<int>(op)) + "|"
+             + key + "|" + value;
+    }
+
+    // 反序列化方法
+    static LogEntry deserialize(const std::string& data) {
+        // 解析字符串并填充字段
+    }
+
+    // Getters
+    int getTerm() const { return term; }
+    Operation getOp() const { return op; }
+    // ...其他字段的getter
+};
+
+---
+
+### 数据库设计建议
+
+1. **不需要引入 MySQL**  
+   分布式系统本身已具备数据可靠性，建议使用：
+   - **嵌入式键值数据库**：LevelDB / RocksDB（推荐）
+     ```cpp
+     #include <leveldb/db.h>
+     leveldb::DB* db;
+     leveldb::Options options;
+     options.create_if_missing = true;
+     leveldb::DB::Open(options, "/data/kvstore", &db);
+     ```
+   - **内存存储 + 快照持久化**（适合小数据量）
+
+2. **存储路径规划**  
+   在 Ubuntu 系统下可部署在以下位置：
+   ```
+   /var/raftkv/               # 主目录
+     ├── node1/               # 节点1数据
+     │   ├── logs             # Raft 日志
+     │   └── snapshots        # 状态机快照
+     ├── node2/               # 节点2数据
+     └── ...
+   ```
+
+3. **快照机制**  
+   定期将状态机的当前状态（数据库内容）生成快照，减少日志重放时间。
+
+---
+
+### 关键执行流程示例
+
+**客户端写入操作流程**：
+1. 客户端调用 `KvServer::set("key", "value")`
+2. `KvServer` 将操作封装为 LogEntry，调用 `RaftNode::propose(entry)`
+3. Raft 节点通过 `appendEntriesRPC` 在集群中达成共识
+4. 当日志提交后，`applyCommittedLogs` 将操作应用到 `KvStateMachine`
+5. 状态机通过 LevelDB 执行实际存储
+
+**领导者选举流程**：
+1. Follower 检测到选举超时
+2. 转换为 Candidate，调用 `startElection()`
+3. 通过 `requestVoteRPC` 向其他节点拉票
+4. 获得多数票后成为 Leader，开始发送心跳
+
+--- 
+
+### 开发工具建议
+
+- **RPC 框架**：gRPC（推荐）或 libuv 实现简单RPC
+- **嵌入式数据库**：LevelDB（C++ 原生接口）
+- **构建工具**：CMake
+- **日志库**：spdlog
