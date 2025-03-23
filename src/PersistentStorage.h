@@ -1,6 +1,8 @@
+#pragma once
 #include <string>
 
-class PersistentStorage {
+class PersistentStorage
+{
 public:
     PersistentStorage(const std::string& path);
     ~PersistentStorage();

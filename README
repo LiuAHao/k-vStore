@@ -207,9 +207,339 @@ public:
 
 --- 
 
-### 开发工具建议
+### 详细架构说明：网络通信层与键值服务层
 
-- **RPC 框架**：gRPC（推荐）或 libuv 实现简单RPC
-- **嵌入式数据库**：LevelDB（C++ 原生接口）
-- **构建工具**：CMake
-- **日志库**：spdlog
+---
+
+#### 一、RpcClient/RpcServer 详细设计（网络通信核心）
+
+##### 1. `RpcServer` 类 - RPC 服务端
+```cpp
+class RpcServer {
+private:
+    // RPC 服务端核心组件
+    grpc::ServerBuilder builder;       // 使用 gRPC 作为示例
+    std::unique_ptr<grpc::Server> server;
+    int port;                          // 监听端口
+    
+    // 请求处理回调接口
+    std::function<void(const RequestVoteReq&, RequestVoteResp&)> voteHandler;
+    std::function<void(const AppendEntriesReq&, AppendEntriesResp&)> appendHandler;
+    std::function<void(const ClientRequest&, ClientResponse&)> clientCmdHandler;
+
+public:
+    // 启动服务端
+    void start() {
+        builder.AddListeningPort("0.0.0.0:"+std::to_string(port), 
+            grpc::InsecureServerCredentials());
+        builder.RegisterService(this); // 注册服务
+        server = builder.BuildAndStart();
+    }
+
+    // gRPC 服务方法实现（自动生成部分代码）
+    grpc::Status RequestVote(grpc::ServerContext* ctx, 
+                            const RequestVoteReq* req, 
+                            RequestVoteResp* resp) override {
+            voteHandler(*req, *resp); // 转交给 RaftNode 处理
+            return grpc::Status::OK;
+        }
+    };
+```
+
+##### 2. `RpcClient` 类 - RPC 客户端
+```cpp
+class RpcClient {
+private:
+    struct PeerConnection {
+        std::string address; // 如 "10.0.0.2:50051"
+        std::unique_ptr<raftRpc::Stub> stub; // gRPC 生成的存根
+    };
+    std::vector<PeerConnection> peers; // 集群所有节点连接信息
+
+public:
+    // 发送请求投票 RPC
+    bool sendRequestVote(int peerId, const RequestVoteReq& req, 
+                        RequestVoteResp& resp) {
+        grpc::ClientContext ctx;
+        auto status = peers[peerId].stub->RequestVote(&ctx, req, &resp);
+        return status.ok(); // 返回网络是否成功
+    }
+
+    // 发送客户端命令到 Leader
+    bool sendClientCommand(const std::string& leaderAddr, 
+                          const ClientRequest& req,
+                          ClientResponse& resp) {
+        auto channel = grpc::CreateChannel(leaderAddr, 
+            grpc::InsecureChannelCredentials());
+        auto stub = KvService::NewStub(channel);
+        return stub->ClientCommand(&ctx, req, &resp).ok();
+    }
+};
+```
+
+##### 3. 关键设计要点
+- **连接管理**：维护所有节点的长连接（避免频繁创建）
+- **超时控制**：所有 RPC 调用需设置超时（例如 150ms）
+- **重试机制**：对失败请求进行有限次重试
+- **线程模型**：建议采用 **IO 多线程 + 工作线程池**
+  ```cpp
+  // gRPC 服务端配置示例
+  builder.SetSyncServerOption(grpc::ServerBuilder::NUM_CQS, 4); // 4个完成队列
+  builder.SetSyncServerOption(grpc::ServerBuilder::MIN_POLLERS, 2); // 线程数
+  ```
+
+---
+
+#### 二、KvServer 详细设计（业务接口层）
+
+##### 1. 类定义与核心方法
+```cpp
+class KvServer {
+private:
+    RaftNode& raftNode;          // 关联的 Raft 节点
+    KvStateMachine stateMachine; // 键值存储状态机
+    std::mutex pendingReqMutex;  
+    std::map<int64_t, std::promise<std::string>> pendingRequests; // 未完成请求
+    
+public:
+    // 处理客户端 GET 请求（线性化读取）
+    std::string get(const std::string& key) {
+        // 1. 如果当前节点是 Leader，直接查询状态机
+        if (raftNode.isLeader()) {
+            return stateMachine.get(key); 
+        }
+        // 2. 否则转发请求到 Leader
+        else {
+            auto leaderAddr = raftNode.getLeaderAddress();
+            return rpcClient.sendClientCommand(leaderAddr, ...);
+        }
+    }
+
+    // 处理客户端 SET 请求（需要走 Raft 日志）
+    void set(const std::string& key, const std::string& value) {
+        LogEntry entry;
+        entry.op = Operation::SET;
+        entry.key = key;
+        entry.value = value;
+        entry.clientId = ...; // 客户端唯一标识
+        
+        // 提交到 Raft 集群
+        int64_t logIndex = raftNode.propose(entry); 
+        
+        // 等待日志提交（异步等待）
+        auto fut = waitForCommit(logIndex); 
+        fut.get(); // 阻塞直到提交或超时
+    }
+
+    // 等待指定日志索引被提交
+    std::future<void> waitForCommit(int64_t index) {
+        std::promise<void> promise;
+        {
+            std::lock_guard<std::mutex> lk(pendingReqMutex);
+            pendingRequests[index] = std::move(promise);
+        }
+        return promise.get_future();
+    }
+};
+```
+
+##### 2. 与 Raft 的交互流程
+```
+客户端请求处理流程：
+1. 客户端发起 SET 请求到任意 KvServer
+2. 若非 Leader 节点，拒绝并返回 Leader 地址 (HTTP 307 重定向)
+3. Leader 的 KvServer 创建 LogEntry 并调用 raftNode.propose()
+4. RaftNode 通过 RPC 将日志复制到多数节点
+5. 当日志提交后，KvServer 唤醒等待中的客户端请求
+```
+
+##### 3. 线性化读取优化
+```cpp
+// 通过 Raft 的 Leader Lease 机制保证读取一致性
+std::string KvServer::getLinearizable(const std::string& key) {
+    // 1. 向 Raft 提交一个空操作（NOOP）确认 Leader 有效性
+    int64_t readIndex = raftNode.getLastCommittedIndex();
+    
+    // 2. 等待状态机应用到这个索引
+    while (stateMachine.getLastApplied() < readIndex) {
+        std::this_thread::sleep_for(1ms);
+    }
+    
+    // 3. 现在可以安全读取
+    return stateMachine.get(key);
+}
+```
+
+---
+
+#### 三、关键交互场景示例
+
+##### 场景1：客户端写入数据
+```cpp
+// 客户端代码示例
+KvClient client("10.0.0.1:50051"); // 连接任意节点
+client.set("name", "Alice"); 
+
+// 内部发生：
+// 1. KvServer 创建 LogEntry {term:5, index:102, op:SET, key:"name", value:"Alice"}
+// 2. RaftNode 发送 AppendEntries RPC 给 Followers
+// 3. 多数节点确认后提交日志
+// 4. KvStateMachine 执行 database->put("name", "Alice")
+```
+
+##### 场景2：节点间心跳通信
+```cpp
+// Leader 定时发送心跳
+void RaftNode::sendHeartbeat() {
+    AppendEntriesReq req;
+    req.term = currentTerm;
+    req.leaderId = nodeId;
+    req.prevLogIndex = lastLogIndex();
+    
+    for (auto& peer : peers) {
+        rpcClient.sendAppendEntries(peer, req, [this](AppendEntriesResp resp) {
+            if (resp.success) {
+                updateNextIndex(peer.id, resp.matchIndex);
+            }
+        });
+    }
+}
+```
+
+##### 场景3：故障恢复后的日志同步
+```cpp
+// Follower 处理 AppendEntries RPC
+void RaftNode::onAppendEntries(const AppendEntriesReq& req) {
+    if (req.term < currentTerm) {
+        return resp.success = false; // 拒绝旧 Leader 的请求
+    }
+    
+    // 检查日志连续性
+    if (log[req.prevLogIndex].term != req.prevLogTerm) {
+        return resp.success = false; // 需要日志回溯
+    }
+    
+    // 追加新日志并持久化
+    log.insert(log.end(), req.entries.begin(), req.entries.end());
+    storage.saveLogs(log);
+    
+    // 更新提交索引
+    if (req.leaderCommit > commitIndex) {
+        commitIndex = std::min(req.leaderCommit, lastLogIndex());
+    }
+}
+```
+
+---
+
+### 四、线程模型与并发控制
+
+##### 推荐线程架构
+```
++----------------+     +-----------------+
+|  RPC 接收线程  | --> | 任务队列 (MPMC) | --> | 工作线程池 |
++----------------+     +-----------------+     +------------+
+       ^                                                 |
+       |                                                 v
++----------------+                                 +------------+
+| 定时器线程     |                                 | 状态机应用 |
+| (选举/心跳)    |                                 | 线程       |
++----------------+                                 +------------+
+```
+
+##### 关键并发控制点
+1. **RaftNode 状态变更锁**
+   ```cpp
+   std::mutex raftStateMutex; // 保护 currentTerm/votedFor/log 等状态
+   ```
+2. **提交索引原子变量**
+   ```cpp
+   std::atomic<int64_t> commitIndex{0}; // 无锁读取已提交索引
+   ```
+3. **客户端请求去重表**
+   ```cpp
+   std::shared_mutex clientTableMutex; // 读写锁优化
+   std::unordered_map<std::string, int64_t> clientLastSeq;
+   ```
+
+---
+
+### 五、配置管理建议
+
+1. **节点配置文件格式** (`cluster.conf`)
+   ```json
+   {
+     "nodes": [
+       {"id": 1, "address": "10.0.0.1:50051"},
+       {"id": 2, "address": "10.0.0.2:50051"},
+       {"id": 3, "address": "10.0.0.3:50051"}
+     ],
+     "election_timeout": {"min": 150, "max": 300} // 单位 ms
+   }
+   ```
+
+2. **动态成员变更** (Raft 扩展功能)
+   ```cpp
+   // 特殊日志类型用于配置变更
+   LogEntry entry;
+   entry.op = Operation::CONFIG_CHANGE;
+   entry.data = serialize(newConfig); 
+   raftNode.propose(entry);
+   ```
+
+--- 
+
+// 用户客户端示例（使用 gRPC 协议）
+class KvClient {
+private:
+    std::string currentLeader;  // 当前已知的 Leader 地址
+    std::vector<std::string> servers; // 集群所有节点地址（用于重试）
+    grpc::ChannelCredentials* creds;
+
+public:
+    KvClient(const std::vector<std::string>& serverAddrs) {
+        servers = serverAddrs;
+        creds = grpc::InsecureChannelCredentials();
+        currentLeader = servers[0]; // 初始猜测第一个节点是 Leader
+    }
+
+    // 发送 SET 请求到集群
+    bool set(const std::string& key, const std::string& value) {
+        while (true) {
+            // 创建 gRPC 通道连接当前 Leader
+            auto channel = grpc::CreateChannel(currentLeader, creds);
+            auto stub = kvservice::KvService::NewStub(channel);
+            
+            // 构建请求
+            ClientRequest req;
+            req.set_key(key);
+            req.set_value(value);
+            req.set_optype(OpType::SET);
+            
+            // 发送请求
+            ClientResponse resp;
+            grpc::ClientContext ctx; 
+            auto status = stub->ClientCommand(&ctx, req, &resp);
+            
+            // 处理响应
+            if (status.ok()) {
+                if (resp.success()) {
+                    return true; // 操作成功
+                } else if (resp.error() == NOT_LEADER) {
+                    // 更新 Leader 地址并重试
+                    currentLeader = resp.leader_hint();
+                    continue;
+                }
+            } else {
+                // 网络故障，尝试其他节点
+                rotateServer();
+            }
+        }
+    }
+
+    void rotateServer() {
+        // 轮换到下一个节点地址
+        std::rotate(servers.begin(), servers.begin()+1, servers.end());
+        currentLeader = servers[0];
+    }
+};

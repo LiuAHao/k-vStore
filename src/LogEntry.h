@@ -1,6 +1,8 @@
+#pragma once
 #include <string>
 
-class LogEntry {
+class LogEntry 
+{
 public:
     enum class Type { SET, GET, DELETE, NOOP };
     Type type;

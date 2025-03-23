@@ -1,7 +1,12 @@
+#pragma once
 #include <string>
 
-class RpcServer {
+class RpcServer 
+{
+
 public:
-    RpcServer(const std::string& address, const std::string& port);
+    RpcServer();
     ~RpcServer();
+    void registerHandler(RequestVoteHandler handler);
+    void startListening(int port);
 };

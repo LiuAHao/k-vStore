@@ -1,6 +1,7 @@
 #include "KvStateMachine.h"
 
-KvStateMachine::KvStateMachine() {
+KvStateMachine::KvStateMachine() 
+{
     // 初始化数据库
     database = new leveldb::DB();
 }
