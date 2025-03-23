@@ -1,52 +1,53 @@
-#include <KvClient.h>
+#include "KvClient.h"
+#include <iostream>
 
-KvClient::KvClient(std::vector<std::string> &serverAddrs):servers(serverAddrs)
-{
-    servers = serverAddrs;
-    creds = grpc::InsecureChannelCredentials();     // 初始化 gRPC 凭证
-    currentLeader = servers[0];     //猜测第一个是leader
-}
-
-bool KvClient::set(std::string &key, std::string &value)
-{
-    while (true)
-    {
-        auto channel = grpc::CreateChannel(currentLeader, creds);   // 创建 gRPC 通道连接当前的 leader
-        auto stub = KvService::NewStub(channel);    // 创建 gRPC 存根
-
-        ClientRequest request;
-        request.set_key(key);
-        request.set_value(value);
-        request.set_op(SET);
-
-        ClientResponse resp;
-        grpc::ClientContext context;    // 用于存储 gRPC 上下文信息
-        auto status = stub->ClientCommand(&context, request, &resp);    // 发送 gRPC 请求并获取响应
-
-        if (status.ok())    // 检查 gRPC 响应状态
-        {
-            if(status.ok())
-            {
-                return true;
-            }
-            else if(resp.error() == NOT_LEADER)
-            {
-                currentLeader = resp.leader_hint();     // 更新当前的 leader
-                continue;
-            }
-        }
-        else
-        {
-            //网络故障，尝试其他节点
-            rotateServer();
-        }
+KvClient::KvClient(std::vector<std::string>& servers) 
+    : servers(servers), currentServerIndex(0) {
+    
+    if (servers.empty()) {
+        std::cerr << "错误：服务器列表为空" << std::endl;
+        return;
     }
+    
+    currentAddress = servers[currentServerIndex];
+    std::cout << "KvClient 初始化，连接到 " << currentAddress << std::endl;
+    
+    // 在实际的gRPC实现中，这里会创建通道和存根
+    // 现在我们只是模拟
 }
 
-void KvClient::rotateServer()
-{
-    std::rotate(servers.begin(), servers.begin() + 1, servers.end());       // 旋转服务器列表,将第一个元素移动到最后
-    currentLeader = servers[0];     // 更新当前的 leader
+KvClient::~KvClient() {
+    // 清理资源
+}
+
+bool KvClient::set(const std::string& key, const std::string& value) {
+    std::cout << "发送SET请求: key=" << key << ", value=" << value << " 到 " << currentAddress << std::endl;
+    
+    // 在实际实现中，这里会通过gRPC发送请求
+    // 现在我们只是模拟成功
+    return true;
+}
+
+std::string KvClient::get(const std::string& key) {
+    std::cout << "发送GET请求: key=" << key << " 到 " << currentAddress << std::endl;
+    
+    // 在实际实现中，这里会通过gRPC发送请求
+    // 现在我们只是模拟返回一个值
+    return "模拟的值_" + key;
+}
+
+bool KvClient::deleteKey(const std::string& key) {
+    std::cout << "发送DELETE请求: key=" << key << " 到 " << currentAddress << std::endl;
+    
+    // 在实际实现中，这里会通过gRPC发送请求
+    // 现在我们只是模拟成功
+    return true;
+}
+
+void KvClient::rotateServer() {
+    currentServerIndex = (currentServerIndex + 1) % servers.size();
+    currentAddress = servers[currentServerIndex];
+    std::cout << "切换到服务器: " << currentAddress << std::endl;
 }
 
 

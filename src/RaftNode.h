@@ -1,9 +1,10 @@
 #pragma once
 #include <string>
-
 class RaftNode 
 {
+private:
+
 public:
-    RaftNode(const std::string& address, const std::string& port);
+    RaftNode();
     ~RaftNode();
 };
