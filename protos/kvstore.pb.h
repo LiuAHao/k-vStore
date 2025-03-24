@@ -39,7 +39,7 @@ namespace protobuf_kvstore_2eproto {
 struct TableStruct {
   static const ::google::protobuf::internal::ParseTableField entries[];
   static const ::google::protobuf::internal::AuxillaryParseTableField aux[];
-  static const ::google::protobuf::internal::ParseTable schema[2];
+  static const ::google::protobuf::internal::ParseTable schema[4];
   static const ::google::protobuf::internal::FieldMetadata field_metadata[];
   static const ::google::protobuf::internal::SerializationTable serialization_table[];
   static const ::google::protobuf::uint32 offsets[];
@@ -53,11 +53,19 @@ extern CommandRequestDefaultTypeInternal _CommandRequest_default_instance_;
 class CommandResponse;
 class CommandResponseDefaultTypeInternal;
 extern CommandResponseDefaultTypeInternal _CommandResponse_default_instance_;
+class GetRequest;
+class GetRequestDefaultTypeInternal;
+extern GetRequestDefaultTypeInternal _GetRequest_default_instance_;
+class GetResponse;
+class GetResponseDefaultTypeInternal;
+extern GetResponseDefaultTypeInternal _GetResponse_default_instance_;
 }  // namespace kvstore
 namespace google {
 namespace protobuf {
 template<> ::kvstore::CommandRequest* Arena::CreateMaybeMessage<::kvstore::CommandRequest>(Arena*);
 template<> ::kvstore::CommandResponse* Arena::CreateMaybeMessage<::kvstore::CommandResponse>(Arena*);
+template<> ::kvstore::GetRequest* Arena::CreateMaybeMessage<::kvstore::GetRequest>(Arena*);
+template<> ::kvstore::GetResponse* Arena::CreateMaybeMessage<::kvstore::GetResponse>(Arena*);
 }  // namespace protobuf
 }  // namespace google
 namespace kvstore {
@@ -66,12 +74,13 @@ enum OperationType {
   SET = 0,
   GET = 1,
   DELETE = 2,
+  NOOP = 3,
   OperationType_INT_MIN_SENTINEL_DO_NOT_USE_ = ::google::protobuf::kint32min,
   OperationType_INT_MAX_SENTINEL_DO_NOT_USE_ = ::google::protobuf::kint32max
 };
 bool OperationType_IsValid(int value);
 const OperationType OperationType_MIN = SET;
-const OperationType OperationType_MAX = DELETE;
+const OperationType OperationType_MAX = NOOP;
 const int OperationType_ARRAYSIZE = OperationType_MAX + 1;
 
 const ::google::protobuf::EnumDescriptor* OperationType_descriptor();
@@ -224,11 +233,11 @@ class CommandRequest : public ::google::protobuf::Message /* @@protoc_insertion_
   ::std::string* release_value();
   void set_allocated_value(::std::string* value);
 
-  // .kvstore.OperationType type = 3;
-  void clear_type();
-  static const int kTypeFieldNumber = 3;
-  ::kvstore::OperationType type() const;
-  void set_type(::kvstore::OperationType value);
+  // .kvstore.OperationType operation_type = 3;
+  void clear_operation_type();
+  static const int kOperationTypeFieldNumber = 3;
+  ::kvstore::OperationType operation_type() const;
+  void set_operation_type(::kvstore::OperationType value);
 
   // @@protoc_insertion_point(class_scope:kvstore.CommandRequest)
  private:
@@ -236,7 +245,7 @@ class CommandRequest : public ::google::protobuf::Message /* @@protoc_insertion_
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::ArenaStringPtr key_;
   ::google::protobuf::internal::ArenaStringPtr value_;
-  int type_;
+  int operation_type_;
   mutable ::google::protobuf::internal::CachedSize _cached_size_;
   friend struct ::protobuf_kvstore_2eproto::TableStruct;
 };
@@ -343,19 +352,19 @@ class CommandResponse : public ::google::protobuf::Message /* @@protoc_insertion
   ::std::string* release_value();
   void set_allocated_value(::std::string* value);
 
-  // string leaderHint = 3;
-  void clear_leaderhint();
+  // string leader_hint = 3;
+  void clear_leader_hint();
   static const int kLeaderHintFieldNumber = 3;
-  const ::std::string& leaderhint() const;
-  void set_leaderhint(const ::std::string& value);
+  const ::std::string& leader_hint() const;
+  void set_leader_hint(const ::std::string& value);
   #if LANG_CXX11
-  void set_leaderhint(::std::string&& value);
+  void set_leader_hint(::std::string&& value);
   #endif
-  void set_leaderhint(const char* value);
-  void set_leaderhint(const char* value, size_t size);
-  ::std::string* mutable_leaderhint();
-  ::std::string* release_leaderhint();
-  void set_allocated_leaderhint(::std::string* leaderhint);
+  void set_leader_hint(const char* value);
+  void set_leader_hint(const char* value, size_t size);
+  ::std::string* mutable_leader_hint();
+  ::std::string* release_leader_hint();
+  void set_allocated_leader_hint(::std::string* leader_hint);
 
   // bool success = 1;
   void clear_success();
@@ -363,20 +372,256 @@ class CommandResponse : public ::google::protobuf::Message /* @@protoc_insertion
   bool success() const;
   void set_success(bool value);
 
-  // .kvstore.ErrorCode errorCode = 4;
-  void clear_errorcode();
+  // .kvstore.ErrorCode error_code = 4;
+  void clear_error_code();
   static const int kErrorCodeFieldNumber = 4;
-  ::kvstore::ErrorCode errorcode() const;
-  void set_errorcode(::kvstore::ErrorCode value);
+  ::kvstore::ErrorCode error_code() const;
+  void set_error_code(::kvstore::ErrorCode value);
 
   // @@protoc_insertion_point(class_scope:kvstore.CommandResponse)
  private:
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::ArenaStringPtr value_;
-  ::google::protobuf::internal::ArenaStringPtr leaderhint_;
+  ::google::protobuf::internal::ArenaStringPtr leader_hint_;
   bool success_;
-  int errorcode_;
+  int error_code_;
+  mutable ::google::protobuf::internal::CachedSize _cached_size_;
+  friend struct ::protobuf_kvstore_2eproto::TableStruct;
+};
+// -------------------------------------------------------------------
+
+class GetRequest : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:kvstore.GetRequest) */ {
+ public:
+  GetRequest();
+  virtual ~GetRequest();
+
+  GetRequest(const GetRequest& from);
+
+  inline GetRequest& operator=(const GetRequest& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  #if LANG_CXX11
+  GetRequest(GetRequest&& from) noexcept
+    : GetRequest() {
+    *this = ::std::move(from);
+  }
+
+  inline GetRequest& operator=(GetRequest&& from) noexcept {
+    if (GetArenaNoVirtual() == from.GetArenaNoVirtual()) {
+      if (this != &from) InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+  #endif
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const GetRequest& default_instance();
+
+  static void InitAsDefaultInstance();  // FOR INTERNAL USE ONLY
+  static inline const GetRequest* internal_default_instance() {
+    return reinterpret_cast<const GetRequest*>(
+               &_GetRequest_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    2;
+
+  void Swap(GetRequest* other);
+  friend void swap(GetRequest& a, GetRequest& b) {
+    a.Swap(&b);
+  }
+
+  // implements Message ----------------------------------------------
+
+  inline GetRequest* New() const final {
+    return CreateMaybeMessage<GetRequest>(NULL);
+  }
+
+  GetRequest* New(::google::protobuf::Arena* arena) const final {
+    return CreateMaybeMessage<GetRequest>(arena);
+  }
+  void CopyFrom(const ::google::protobuf::Message& from) final;
+  void MergeFrom(const ::google::protobuf::Message& from) final;
+  void CopyFrom(const GetRequest& from);
+  void MergeFrom(const GetRequest& from);
+  void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input) final;
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const final;
+  ::google::protobuf::uint8* InternalSerializeWithCachedSizesToArray(
+      bool deterministic, ::google::protobuf::uint8* target) const final;
+  int GetCachedSize() const final { return _cached_size_.Get(); }
+
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(GetRequest* other);
+  private:
+  inline ::google::protobuf::Arena* GetArenaNoVirtual() const {
+    return NULL;
+  }
+  inline void* MaybeArenaPtr() const {
+    return NULL;
+  }
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // string key = 1;
+  void clear_key();
+  static const int kKeyFieldNumber = 1;
+  const ::std::string& key() const;
+  void set_key(const ::std::string& value);
+  #if LANG_CXX11
+  void set_key(::std::string&& value);
+  #endif
+  void set_key(const char* value);
+  void set_key(const char* value, size_t size);
+  ::std::string* mutable_key();
+  ::std::string* release_key();
+  void set_allocated_key(::std::string* key);
+
+  // bool linearizable = 2;
+  void clear_linearizable();
+  static const int kLinearizableFieldNumber = 2;
+  bool linearizable() const;
+  void set_linearizable(bool value);
+
+  // @@protoc_insertion_point(class_scope:kvstore.GetRequest)
+ private:
+
+  ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
+  ::google::protobuf::internal::ArenaStringPtr key_;
+  bool linearizable_;
+  mutable ::google::protobuf::internal::CachedSize _cached_size_;
+  friend struct ::protobuf_kvstore_2eproto::TableStruct;
+};
+// -------------------------------------------------------------------
+
+class GetResponse : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:kvstore.GetResponse) */ {
+ public:
+  GetResponse();
+  virtual ~GetResponse();
+
+  GetResponse(const GetResponse& from);
+
+  inline GetResponse& operator=(const GetResponse& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  #if LANG_CXX11
+  GetResponse(GetResponse&& from) noexcept
+    : GetResponse() {
+    *this = ::std::move(from);
+  }
+
+  inline GetResponse& operator=(GetResponse&& from) noexcept {
+    if (GetArenaNoVirtual() == from.GetArenaNoVirtual()) {
+      if (this != &from) InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+  #endif
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const GetResponse& default_instance();
+
+  static void InitAsDefaultInstance();  // FOR INTERNAL USE ONLY
+  static inline const GetResponse* internal_default_instance() {
+    return reinterpret_cast<const GetResponse*>(
+               &_GetResponse_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    3;
+
+  void Swap(GetResponse* other);
+  friend void swap(GetResponse& a, GetResponse& b) {
+    a.Swap(&b);
+  }
+
+  // implements Message ----------------------------------------------
+
+  inline GetResponse* New() const final {
+    return CreateMaybeMessage<GetResponse>(NULL);
+  }
+
+  GetResponse* New(::google::protobuf::Arena* arena) const final {
+    return CreateMaybeMessage<GetResponse>(arena);
+  }
+  void CopyFrom(const ::google::protobuf::Message& from) final;
+  void MergeFrom(const ::google::protobuf::Message& from) final;
+  void CopyFrom(const GetResponse& from);
+  void MergeFrom(const GetResponse& from);
+  void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input) final;
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const final;
+  ::google::protobuf::uint8* InternalSerializeWithCachedSizesToArray(
+      bool deterministic, ::google::protobuf::uint8* target) const final;
+  int GetCachedSize() const final { return _cached_size_.Get(); }
+
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(GetResponse* other);
+  private:
+  inline ::google::protobuf::Arena* GetArenaNoVirtual() const {
+    return NULL;
+  }
+  inline void* MaybeArenaPtr() const {
+    return NULL;
+  }
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // string value = 2;
+  void clear_value();
+  static const int kValueFieldNumber = 2;
+  const ::std::string& value() const;
+  void set_value(const ::std::string& value);
+  #if LANG_CXX11
+  void set_value(::std::string&& value);
+  #endif
+  void set_value(const char* value);
+  void set_value(const char* value, size_t size);
+  ::std::string* mutable_value();
+  ::std::string* release_value();
+  void set_allocated_value(::std::string* value);
+
+  // bool success = 1;
+  void clear_success();
+  static const int kSuccessFieldNumber = 1;
+  bool success() const;
+  void set_success(bool value);
+
+  // @@protoc_insertion_point(class_scope:kvstore.GetResponse)
+ private:
+
+  ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
+  ::google::protobuf::internal::ArenaStringPtr value_;
+  bool success_;
   mutable ::google::protobuf::internal::CachedSize _cached_size_;
   friend struct ::protobuf_kvstore_2eproto::TableStruct;
 };
@@ -497,18 +742,18 @@ inline void CommandRequest::set_allocated_value(::std::string* value) {
   // @@protoc_insertion_point(field_set_allocated:kvstore.CommandRequest.value)
 }
 
-// .kvstore.OperationType type = 3;
-inline void CommandRequest::clear_type() {
-  type_ = 0;
+// .kvstore.OperationType operation_type = 3;
+inline void CommandRequest::clear_operation_type() {
+  operation_type_ = 0;
 }
-inline ::kvstore::OperationType CommandRequest::type() const {
-  // @@protoc_insertion_point(field_get:kvstore.CommandRequest.type)
-  return static_cast< ::kvstore::OperationType >(type_);
+inline ::kvstore::OperationType CommandRequest::operation_type() const {
+  // @@protoc_insertion_point(field_get:kvstore.CommandRequest.operation_type)
+  return static_cast< ::kvstore::OperationType >(operation_type_);
 }
-inline void CommandRequest::set_type(::kvstore::OperationType value) {
+inline void CommandRequest::set_operation_type(::kvstore::OperationType value) {
   
-  type_ = value;
-  // @@protoc_insertion_point(field_set:kvstore.CommandRequest.type)
+  operation_type_ = value;
+  // @@protoc_insertion_point(field_set:kvstore.CommandRequest.operation_type)
 }
 
 // -------------------------------------------------------------------
@@ -582,76 +827,222 @@ inline void CommandResponse::set_allocated_value(::std::string* value) {
   // @@protoc_insertion_point(field_set_allocated:kvstore.CommandResponse.value)
 }
 
-// string leaderHint = 3;
-inline void CommandResponse::clear_leaderhint() {
-  leaderhint_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+// string leader_hint = 3;
+inline void CommandResponse::clear_leader_hint() {
+  leader_hint_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline const ::std::string& CommandResponse::leaderhint() const {
-  // @@protoc_insertion_point(field_get:kvstore.CommandResponse.leaderHint)
-  return leaderhint_.GetNoArena();
+inline const ::std::string& CommandResponse::leader_hint() const {
+  // @@protoc_insertion_point(field_get:kvstore.CommandResponse.leader_hint)
+  return leader_hint_.GetNoArena();
 }
-inline void CommandResponse::set_leaderhint(const ::std::string& value) {
+inline void CommandResponse::set_leader_hint(const ::std::string& value) {
   
-  leaderhint_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:kvstore.CommandResponse.leaderHint)
+  leader_hint_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:kvstore.CommandResponse.leader_hint)
 }
 #if LANG_CXX11
-inline void CommandResponse::set_leaderhint(::std::string&& value) {
+inline void CommandResponse::set_leader_hint(::std::string&& value) {
   
-  leaderhint_.SetNoArena(
+  leader_hint_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:kvstore.CommandResponse.leaderHint)
+  // @@protoc_insertion_point(field_set_rvalue:kvstore.CommandResponse.leader_hint)
 }
 #endif
-inline void CommandResponse::set_leaderhint(const char* value) {
+inline void CommandResponse::set_leader_hint(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   
-  leaderhint_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:kvstore.CommandResponse.leaderHint)
+  leader_hint_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:kvstore.CommandResponse.leader_hint)
 }
-inline void CommandResponse::set_leaderhint(const char* value, size_t size) {
+inline void CommandResponse::set_leader_hint(const char* value, size_t size) {
   
-  leaderhint_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+  leader_hint_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:kvstore.CommandResponse.leaderHint)
+  // @@protoc_insertion_point(field_set_pointer:kvstore.CommandResponse.leader_hint)
 }
-inline ::std::string* CommandResponse::mutable_leaderhint() {
+inline ::std::string* CommandResponse::mutable_leader_hint() {
   
-  // @@protoc_insertion_point(field_mutable:kvstore.CommandResponse.leaderHint)
-  return leaderhint_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  // @@protoc_insertion_point(field_mutable:kvstore.CommandResponse.leader_hint)
+  return leader_hint_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline ::std::string* CommandResponse::release_leaderhint() {
-  // @@protoc_insertion_point(field_release:kvstore.CommandResponse.leaderHint)
+inline ::std::string* CommandResponse::release_leader_hint() {
+  // @@protoc_insertion_point(field_release:kvstore.CommandResponse.leader_hint)
   
-  return leaderhint_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  return leader_hint_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline void CommandResponse::set_allocated_leaderhint(::std::string* leaderhint) {
-  if (leaderhint != NULL) {
+inline void CommandResponse::set_allocated_leader_hint(::std::string* leader_hint) {
+  if (leader_hint != NULL) {
     
   } else {
     
   }
-  leaderhint_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), leaderhint);
-  // @@protoc_insertion_point(field_set_allocated:kvstore.CommandResponse.leaderHint)
+  leader_hint_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), leader_hint);
+  // @@protoc_insertion_point(field_set_allocated:kvstore.CommandResponse.leader_hint)
 }
 
-// .kvstore.ErrorCode errorCode = 4;
-inline void CommandResponse::clear_errorcode() {
-  errorcode_ = 0;
+// .kvstore.ErrorCode error_code = 4;
+inline void CommandResponse::clear_error_code() {
+  error_code_ = 0;
 }
-inline ::kvstore::ErrorCode CommandResponse::errorcode() const {
-  // @@protoc_insertion_point(field_get:kvstore.CommandResponse.errorCode)
-  return static_cast< ::kvstore::ErrorCode >(errorcode_);
+inline ::kvstore::ErrorCode CommandResponse::error_code() const {
+  // @@protoc_insertion_point(field_get:kvstore.CommandResponse.error_code)
+  return static_cast< ::kvstore::ErrorCode >(error_code_);
 }
-inline void CommandResponse::set_errorcode(::kvstore::ErrorCode value) {
+inline void CommandResponse::set_error_code(::kvstore::ErrorCode value) {
   
-  errorcode_ = value;
-  // @@protoc_insertion_point(field_set:kvstore.CommandResponse.errorCode)
+  error_code_ = value;
+  // @@protoc_insertion_point(field_set:kvstore.CommandResponse.error_code)
+}
+
+// -------------------------------------------------------------------
+
+// GetRequest
+
+// string key = 1;
+inline void GetRequest::clear_key() {
+  key_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline const ::std::string& GetRequest::key() const {
+  // @@protoc_insertion_point(field_get:kvstore.GetRequest.key)
+  return key_.GetNoArena();
+}
+inline void GetRequest::set_key(const ::std::string& value) {
+  
+  key_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:kvstore.GetRequest.key)
+}
+#if LANG_CXX11
+inline void GetRequest::set_key(::std::string&& value) {
+  
+  key_.SetNoArena(
+    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
+  // @@protoc_insertion_point(field_set_rvalue:kvstore.GetRequest.key)
+}
+#endif
+inline void GetRequest::set_key(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  
+  key_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:kvstore.GetRequest.key)
+}
+inline void GetRequest::set_key(const char* value, size_t size) {
+  
+  key_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+  // @@protoc_insertion_point(field_set_pointer:kvstore.GetRequest.key)
+}
+inline ::std::string* GetRequest::mutable_key() {
+  
+  // @@protoc_insertion_point(field_mutable:kvstore.GetRequest.key)
+  return key_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* GetRequest::release_key() {
+  // @@protoc_insertion_point(field_release:kvstore.GetRequest.key)
+  
+  return key_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void GetRequest::set_allocated_key(::std::string* key) {
+  if (key != NULL) {
+    
+  } else {
+    
+  }
+  key_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), key);
+  // @@protoc_insertion_point(field_set_allocated:kvstore.GetRequest.key)
+}
+
+// bool linearizable = 2;
+inline void GetRequest::clear_linearizable() {
+  linearizable_ = false;
+}
+inline bool GetRequest::linearizable() const {
+  // @@protoc_insertion_point(field_get:kvstore.GetRequest.linearizable)
+  return linearizable_;
+}
+inline void GetRequest::set_linearizable(bool value) {
+  
+  linearizable_ = value;
+  // @@protoc_insertion_point(field_set:kvstore.GetRequest.linearizable)
+}
+
+// -------------------------------------------------------------------
+
+// GetResponse
+
+// bool success = 1;
+inline void GetResponse::clear_success() {
+  success_ = false;
+}
+inline bool GetResponse::success() const {
+  // @@protoc_insertion_point(field_get:kvstore.GetResponse.success)
+  return success_;
+}
+inline void GetResponse::set_success(bool value) {
+  
+  success_ = value;
+  // @@protoc_insertion_point(field_set:kvstore.GetResponse.success)
+}
+
+// string value = 2;
+inline void GetResponse::clear_value() {
+  value_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline const ::std::string& GetResponse::value() const {
+  // @@protoc_insertion_point(field_get:kvstore.GetResponse.value)
+  return value_.GetNoArena();
+}
+inline void GetResponse::set_value(const ::std::string& value) {
+  
+  value_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:kvstore.GetResponse.value)
+}
+#if LANG_CXX11
+inline void GetResponse::set_value(::std::string&& value) {
+  
+  value_.SetNoArena(
+    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
+  // @@protoc_insertion_point(field_set_rvalue:kvstore.GetResponse.value)
+}
+#endif
+inline void GetResponse::set_value(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  
+  value_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:kvstore.GetResponse.value)
+}
+inline void GetResponse::set_value(const char* value, size_t size) {
+  
+  value_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+  // @@protoc_insertion_point(field_set_pointer:kvstore.GetResponse.value)
+}
+inline ::std::string* GetResponse::mutable_value() {
+  
+  // @@protoc_insertion_point(field_mutable:kvstore.GetResponse.value)
+  return value_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* GetResponse::release_value() {
+  // @@protoc_insertion_point(field_release:kvstore.GetResponse.value)
+  
+  return value_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void GetResponse::set_allocated_value(::std::string* value) {
+  if (value != NULL) {
+    
+  } else {
+    
+  }
+  value_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set_allocated:kvstore.GetResponse.value)
 }
 
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
 // -------------------------------------------------------------------
 
 

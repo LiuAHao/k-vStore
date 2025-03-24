@@ -6,6 +6,8 @@
 using grpc::Channel;
 using grpc::ClientContext;
 using grpc::Status;
+using grpc::CreateChannel;
+using grpc::InsecureChannelCredentials;
 
 class KvClient::Impl {
 private:
@@ -13,6 +15,7 @@ private:
     mutable int currentLeader;
     mutable std::mutex leaderMutex;
 
+protected:
     template<typename Req, typename Resp>
     bool rpcWithRetry(int methodType, Req& req, Resp& resp, int retry) {
         constexpr int maxRetry = 5;
@@ -38,8 +41,8 @@ private:
             }
             
             if (status.ok()) {
-                if (resp.errorcode() == kvstore::ErrorCode::NOT_LEADER) {
-                    updateLeader(resp.leaderhint());
+                if (resp.error_code() == kvstore::ErrorCode::NOT_LEADER) {
+                    updateLeader(resp.leader_hint());
                     continue;
                 }
                 return resp.success();
@@ -50,21 +53,10 @@ private:
         return false;
     }
 
-    void updateLeader(const std::string& hint) const {
-        if (!hint.empty()) {
-            try {
-                int newLeader = std::stoi(hint);
-                if (newLeader >= 0 && newLeader < stubs.size()) {
-                    currentLeader = newLeader;
-                }
-            } catch (...) {}
-        }
-    }
-
 public:
     Impl(const std::vector<std::string>& servers) : currentLeader(0) {
         for (const auto& addr : servers) {
-            auto channel = grpc::CreateChannel(addr, grpc::InsecureChannelCredentials());
+            auto channel = CreateChannel(addr, InsecureChannelCredentials());
             stubs.push_back(kvstore::KvStore::NewStub(channel));
         }
     }
@@ -73,7 +65,7 @@ public:
         kvstore::CommandRequest req;
         req.set_key(key);
         req.set_value(value);
-        req.set_type(kvstore::OperationType::SET);
+        req.set_operation_type(kvstore::OperationType::SET);
         
         kvstore::CommandResponse resp;
         return rpcWithRetry(0, req, resp, retry);
@@ -82,7 +74,7 @@ public:
     std::string get(const std::string& key, bool linearizable) {
         kvstore::CommandRequest req;
         req.set_key(key);
-        req.set_type(kvstore::OperationType::GET);
+        req.set_operation_type(kvstore::OperationType::GET);
         
         kvstore::CommandResponse resp;
         if (rpcWithRetry(0, req, resp, 3)) {
@@ -91,9 +83,13 @@ public:
         return "";
     }
 
-    void rotateLeader() const {
-        std::lock_guard<std::mutex> lock(leaderMutex);
-        currentLeader = (currentLeader + 1) % stubs.size();
+    bool del(const std::string& key, int retry = 3) {
+        kvstore::CommandRequest req;
+        req.set_key(key);
+        req.set_operation_type(kvstore::OperationType::DELETE);
+        
+        kvstore::CommandResponse resp;
+        return rpcWithRetry(0, req, resp, retry);
     }
 };
 
@@ -104,15 +100,19 @@ KvClient::KvClient(const std::vector<std::string>& servers)
 KvClient::~KvClient() = default;
 
 std::string KvClient::get(const std::string& key, bool linearizable) {
-    kvstore::GetRequest req;
-    req.set_key(key);
-    req.set_linearizable(linearizable);
+    return impl->get(key, linearizable);
+}
 
-    kvstore::GetResponse resp;
-    if (impl->rpcWithRetry(1, req, resp, 3)) {
-        return resp.value();
-    }
-    return "";
+bool KvClient::set(const std::string& key, const std::string& value, int retry) {
+    return impl->set(key, value, retry);
+}
+
+bool KvClient::del(const std::string& key, int retry) {
+    return impl->del(key, retry);
+}
+
+std::string KvClient::getCurrentLeader() const {
+    return impl->getCurrentLeader();
 }
 
 
