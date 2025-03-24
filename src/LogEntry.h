@@ -1,29 +1,44 @@
 #pragma once
 #include <string>
-#include <vector>
+#include <cstdint>
 
-class LogEntry 
-{
+class LogEntry {
 public:
-    enum class Type { SET, GET, DELETE, NOOP };
-    Type type;
-    std::string key;    // 操作的键（GET/SET/DELETE 时使用）
-    std::string value;  // 操作的值（仅 SET 时使用）
-    int64_t requestId;  // 客户端请求唯一ID（用于幂等性）
-    int64_t term;       // 日志对应的任期号（Raft 关键字段）
-    int64_t index;      // 日志在全局的顺序索引
+    enum class Type {
+        SET,
+        DELETE,
+        NOOP
+    };
+
+private:
+    Type type_;
+    std::string key_;
+    std::string value_;
+    int64_t requestId_;
+    int64_t term_;
+    int64_t index_;
+
+public:
+    LogEntry() : type_(Type::NOOP), requestId_(0), term_(0), index_(0) {}
     
-    LogEntry(Type type, const std::string& key, const std::string& value, int64_t requestId, int64_t term, int64_t index);
+    LogEntry(Type type, const std::string& key, const std::string& value, 
+            int64_t requestId, int64_t term, int64_t index)
+        : type_(type), key_(key), value_(value), 
+          requestId_(requestId), term_(term), index_(index) {}
+
+    // Getters
+    Type getType() const { return type_; }
+    int64_t getTerm() const { return term_; }
+    int64_t getIndex() const { return index_; }
+    std::string getKey() const { return key_; }
+    std::string getValue() const { return value_; }
+    int64_t getRequestId() const { return requestId_; }
+
+    // Setters
+    void setTerm(int64_t term) { term_ = term; }
+    void setIndex(int64_t index) { index_ = index; }
+
+    // 添加序列化方法
     std::string serialize() const;
     static LogEntry deserialize(const std::string& data);
-    
-    Type getType() const { return type; }
-    int64_t getTerm() const { return term; }
-    int64_t getIndex() const { return index; }
-    std::string getKey() const { return key; }
-    std::string getValue() const { return value; }
-    int64_t getRequestId() const { return requestId; }
 };
-
-// 辅助函数声明
-std::vector<std::string> split(const std::string& s, const std::string& delimiter);

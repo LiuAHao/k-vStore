@@ -1,33 +1,65 @@
 #include <iostream>
 #include <vector>
-#include <string>
+#include <thread>
+#include <chrono>
 #include "KvServer.h"
 #include "KvClient.h"
 
+void runServer(int nodeId, const std::string& configPath) {
+    try {
+        KvServer server(nodeId, configPath);
+        std::cout << "节点 " << nodeId << " 已启动" << std::endl;
+        std::this_thread::sleep_for(std::chrono::hours(1)); // 保持运行
+    } catch (const std::exception& e) {
+        std::cerr << "节点 " << nodeId << " 启动失败: " << e.what() << std::endl;
+    }
+}
+
+void testCluster(const std::vector<std::string>& addresses) {
+    KvClient client(addresses);
+    
+    // 测试基本操作
+    client.set("name", "Alice");
+    std::cout << "[测试1] 设置 name=Alice" << std::endl;
+    
+    std::cout << "[测试2] 读取 name: " << client.get("name") << std::endl;
+    
+    // 测试领导权变更
+    std::cout << "\n--- 模拟领导者故障 ---" << std::endl;
+    std::string leader = client.getCurrentLeader();
+    std::cout << "当前领导者: " << leader << std::endl;
+    std::cout << "终止领导者节点..." << std::endl;
+    
+    // 等待新领导者选举
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+    
+    client.set("name", "Bob");
+    std::cout << "\n[测试3] 新领导者设置 name=Bob" << std::endl;
+    std::cout << "当前值: " << client.get("name") << std::endl;
+}
+
 int main(int argc, char* argv[]) {
-    std::cout << "键值存储系统启动..." << std::endl;
+    if (argc > 1) { // 节点启动模式
+        int nodeId = std::stoi(argv[1]);
+        runServer(nodeId, "cluster.conf");
+        return 0;
+    }
+
+    // 启动3个节点集群
+    std::vector<std::thread> nodes;
+    for (int i = 1; i <= 3; ++i) {
+        nodes.emplace_back([](int id) {
+            system(("./kvstore " + std::to_string(id)).c_str());
+        }, i);
+    }
     
-    // 创建一个服务器实例
-    KvServer server("127.0.0.1", "50051");
+    // 等待集群初始化
+    std::this_thread::sleep_for(std::chrono::seconds(5));
     
-    // 测试服务器直接操作
-    server.set("test_key", "test_value");
-    std::string value = server.get("test_key");
-    std::cout << "服务器直接获取: key=test_key, value=" << value << std::endl;
-    
-    // 创建一个客户端
-    std::vector<std::string> serverAddresses = {"127.0.0.1:50051"};
-    KvClient client(serverAddresses);
-    
-    // 测试客户端操作
-    client.set("client_key", "client_value");
-    std::string clientValue = client.get("client_key");
-    std::cout << "客户端获取: key=client_key, value=" << clientValue << std::endl;
-    
-    // 测试删除操作
-    client.deleteKey("client_key");
-    
-    std::cout << "测试完成" << std::endl;
-    
+    // 运行测试用例
+    testCluster({"127.0.0.1:50051", "127.0.0.1:50052", "127.0.0.1:50053"});
+
+    // 清理
+    for (auto& t : nodes) t.join();
     return 0;
 }

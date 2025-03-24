@@ -1,43 +1,66 @@
 #include "KvServer.h"
 #include <iostream>
+#include <future>
 
-KvServer::KvServer(const std::string& address, const std::string& port)
-    : address(address), port(port) {
-    // 初始化服务器
-    std::cout << "KvServer 初始化在 " << address << ":" << port << std::endl;
+KvServer::KvServer(int nodeId, const std::string& configPath) 
+    : stateMachine("/tmp/kvstore_" + std::to_string(nodeId)) {
+    
+    // 将回调方法移到public部分后，这里可以正常调用
+    raftNode->setLogAppliedCallback([this](uint64_t index, const LogEntry& entry) {
+        onLogApplied(index, entry);
+    });
+    
+    raftNode->setLeadershipChangeCallback([this](bool isLeader) {
+        onLeadershipChange(isLeader);
+    });
 }
 
-KvServer::~KvServer() {
-    // 清理资源
+void KvServer::onLogApplied(uint64_t index, const LogEntry& entry) {
+    std::lock_guard<std::mutex> lock(pendingReqMutex);
+    if (auto it = pendingRequests.find(entry.getRequestId()); it != pendingRequests.end()) {
+        it->second.set_value(true);  // 修改为直接设置bool值
+        pendingRequests.erase(it);
+    }
 }
 
-std::string KvServer::get(const std::string& key) {
-    // 直接从状态机获取数据
-    return stateMachine.get(key);
+std::future<bool> KvServer::asyncSet(const std::string& key, const std::string& value) {
+    std::promise<bool> promise;
+    auto future = promise.get_future();
+    
+    if (!raftNode->isLeader()) {
+        promise.set_exception(std::make_exception_ptr(
+            std::runtime_error("Not leader")
+        ));
+        return future;
+    }
+
+    static std::atomic<int64_t> requestIdCounter{0};
+    int64_t reqId = ++requestIdCounter;
+
+    LogEntry entry(LogEntry::Type::SET, key, value, reqId, 0, 0);
+    
+    {
+        std::lock_guard<std::mutex> lock(pendingReqMutex);
+        pendingRequests.emplace(entry.getRequestId(), std::move(promise));
+    }
+    
+    try {
+        raftNode->propose(entry);
+    } catch (const std::exception& e) {
+        pendingRequests.erase(entry.getRequestId());
+        throw;
+    }
+    
+    return future;
 }
 
-bool KvServer::set(const std::string& key, const std::string& value) {
-    // 创建一个SET类型的日志条目
-    // 注意：在完整的Raft实现中，这里应该将日志提交给Raft节点
-    // 现在我们直接应用到状态机
-    static int64_t requestId = 0;
-    static int64_t term = 1;
-    static int64_t index = 0;
-    
-    LogEntry entry(LogEntry::Type::SET, key, value, requestId++, term, index++);
-    stateMachine.apply(entry);
-    
-    return true;
-}
-
-bool KvServer::deleteKey(const std::string& key) {
-    // 创建一个DELETE类型的日志条目
-    static int64_t requestId = 1000; // 使用不同的起始ID避免冲突
-    static int64_t term = 1;
-    static int64_t index = 1000;
-    
-    LogEntry entry(LogEntry::Type::DELETE, key, "", requestId++, term, index++);
-    stateMachine.apply(entry);
-    
-    return true;
+// 触发快照
+void KvServer::triggerSnapshot() {
+    if (raftNode->isLeader()) {
+        std::string snapshotPath = "/tmp/snapshot_" + std::to_string(time(nullptr));
+        if (stateMachine.createSnapshot(snapshotPath)) {
+            // 处理快照创建成功
+            std::cout << "快照创建成功: " << snapshotPath << std::endl;
+        }
+    }
 }

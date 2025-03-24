@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package kvstore;
+
+enum OperationType {
+  SET = 0;
+  GET = 1;
+  DELETE = 2;
+}
+
+service KvStore {
+  rpc ClientCommand (CommandRequest) returns (CommandResponse) {}
+}
+
+message CommandRequest {
+  string key = 1;
+  string value = 2;
+  OperationType type = 3;
+}
+
+message CommandResponse {
+  bool success = 1;
+  string value = 2;
+  string leaderHint = 3;
+  ErrorCode errorCode = 4;
+}
+
+enum ErrorCode {
+  OK = 0;
+  NOT_LEADER = 1;
+  TIMEOUT = 2;
+  NOT_FOUND = 3;
+}

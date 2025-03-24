@@ -1,17 +1,19 @@
 #pragma once
-#include "StateMachine.h"
-#include "LogEntry.h"
-#include "leveldb/db.h"
 #include <string>
-#include <iostream>
+#include "LogEntry.h"
+#include <leveldb/db.h>
 
-class KvStateMachine : public StateMachine
-{
-private:
-    leveldb::DB* database;      // 数据库实例
+class KvStateMachine {
 public:
-    KvStateMachine();
+    KvStateMachine(const std::string& dbPath);
     ~KvStateMachine();
-    void apply(const LogEntry& entry) override;
-    std::string get(const std::string& key);
+
+    // 移除override关键字
+    void apply(const LogEntry& entry);
+    bool createSnapshot(const std::string& snapshotPath);
+    bool applySnapshot(const std::string& snapshotPath);
+
+private:
+    leveldb::DB* db;
+    void initializeDB(const std::string& dbPath);
 };

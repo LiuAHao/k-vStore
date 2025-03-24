@@ -1,20 +1,33 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <memory>
+#include <future>
+#include <grpcpp/grpcpp.h>
+#include "kvstore.grpc.pb.h"
 
-class KvClient 
-{
+class KvClient {
 private:
-    std::string currentAddress;
-    std::vector<std::string> servers;
-    size_t currentServerIndex;
-    
+    struct Impl; // PIMPL 模式隐藏实现细节
+    std::unique_ptr<Impl> impl;
+
 public:
-    KvClient(std::vector<std::string>& servers);
+    explicit KvClient(const std::vector<std::string>& servers);
     ~KvClient();
-    
-    bool set(const std::string& key, const std::string& value);
-    std::string get(const std::string& key);
+
+    // 同步接口
+    bool set(const std::string& key, const std::string& value, int retry = 3);
+    std::string get(const std::string& key, bool linearizable = true);
     bool deleteKey(const std::string& key);
-    void rotateServer();    // 切换到下一个服务器
+    
+    // 异步接口
+    std::future<bool> asyncSet(const std::string& key, const std::string& value);
+    std::future<std::string> asyncGet(const std::string& key);
+
+    // 集群状态查询
+    std::string getLeaderAddress() const;
+    std::vector<std::string> getAllServers() const;
+    
+    // 修改获取当前领导者方法
+    std::string getCurrentLeader() const { return getLeaderAddress(); }
 };

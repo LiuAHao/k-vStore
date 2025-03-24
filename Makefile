@@ -1,42 +1,39 @@
-# 编译器和编译选项
 CXX = g++
-CXXFLAGS = -std=c++11 -Wall -Wextra -g
+CXXFLAGS = -std=c++17 -pthread -I/usr/local/include -I/usr/include/jsoncpp \
+           -I. -I$(PROTO_DIR) \
+           `pkg-config --cflags protobuf grpc`
+LDFLAGS = -L/usr/local/lib -lleveldb -ljsoncpp \
+          `pkg-config --libs protobuf grpc++`
 
-# 目录
-SRC_DIR = src
-BUILD_DIR = build
-BIN_DIR = bin
+PROTO_DIR = protos
+PROTO_SRCS = $(PROTO_DIR)/kvstore.pb.cc
+PROTO_HDRS = $(PROTO_DIR)/kvstore.pb.h
+GRPC_SRCS = $(PROTO_DIR)/kvstore.grpc.pb.cc
+GRPC_HDRS = $(PROTO_DIR)/kvstore.grpc.pb.h
 
-# 依赖库
-LDFLAGS = -lleveldb -lpthread
+SRCS = src/main.cpp \
+       src/KvServer.cpp \
+       src/KvClient.cpp \
+       src/RaftNode.cpp \
+       src/PersistentStorage.cpp \
+       src/KvStateMachine.cpp \
+       src/LogEntry.cpp \
+       src/ClientRequest.cpp \
+       src/ClientResponse.cpp \
+       $(PROTO_SRCS) \
+       $(GRPC_SRCS)
 
-# 源文件和目标文件
-SRCS = $(wildcard $(SRC_DIR)/*.cpp)
-OBJS = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRCS))
-TARGET = $(BIN_DIR)/kvstore
+TARGET = kvstore
 
-# 默认目标
-all: directories $(TARGET)
+.PHONY: all clean proto
+all: $(TARGET)
 
-# 创建必要的目录
-directories:
-	mkdir -p $(BUILD_DIR)
-	mkdir -p $(BIN_DIR)
+proto: $(PROTO_DIR)/kvstore.proto
+	protoc -I$(PROTO_DIR) --cpp_out=$(PROTO_DIR) $(PROTO_DIR)/kvstore.proto
+	protoc -I$(PROTO_DIR) --grpc_out=$(PROTO_DIR) --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` $(PROTO_DIR)/kvstore.proto
 
-# 链接目标文件生成可执行文件
-$(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+$(TARGET): proto $(SRCS)
+	$(CXX) $(CXXFLAGS) $(SRCS) -o $@ $(LDFLAGS)
 
-# 编译源文件生成目标文件
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
-
-# 清理生成的文件
 clean:
-	rm -rf $(BUILD_DIR) $(BIN_DIR)
-
-# 运行程序
-run: all
-	$(TARGET)
-
-.PHONY: all directories clean run
+	rm -f $(TARGET) $(PROTO_SRCS) $(PROTO_HDRS) $(GRPC_SRCS) $(GRPC_HDRS)

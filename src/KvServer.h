@@ -2,22 +2,25 @@
 #include <string>
 #include <mutex>
 #include <map>
+#include <future>
+#include "RaftNode.h"
 #include "KvStateMachine.h"
 
-class KvServer 
-{
+class KvServer {
 private:
-    std::string address;
-    std::string port;
-    KvStateMachine stateMachine;    // 键值存储状态机
-    std::mutex pendingReqMutex;     // 用于保护 pendingRequests 的互斥锁
-    std::map<int, std::string> pendingRequests;     // 存储未完成的请求
+    std::unique_ptr<RaftNode> raftNode;
+    KvStateMachine stateMachine;
+    std::mutex pendingReqMutex;
+    std::map<int64_t, std::promise<bool>> pendingRequests;
 
 public:
-    KvServer(const std::string& address, const std::string& port);
-    ~KvServer();
-    
-    std::string get(const std::string& key);
-    bool set(const std::string& key, const std::string& value);
-    bool deleteKey(const std::string& key);
+    // 添加构造函数声明
+    KvServer(int nodeId, const std::string& configPath);
+    ~KvServer() = default;
+
+    // 添加方法声明
+    void onLogApplied(uint64_t index, const LogEntry& entry);
+    void onLeadershipChange(bool isLeader);
+    std::future<bool> asyncSet(const std::string& key, const std::string& value);
+    void triggerSnapshot();
 };
