@@ -4,6 +4,7 @@
 #include <list>
 #include <unordered_map>
 #include <mutex>
+#include <iostream>
 
 /*
 Slab内存分配机制
@@ -35,7 +36,7 @@ Slab工作原理
 class SlabAllocator {
 public:
     // 初始化Slab系统，指定最大内存和增长因子
-    explicit SlabAllocator(size_t max_memory, float growth_factor = 1.25);
+    explicit SlabAllocator(size_t max_memory, float growth_factor = 2);
     ~SlabAllocator();
     
     // 分配指定大小的内存
@@ -47,6 +48,8 @@ public:
     // 获取内存使用统计
     size_t getUsedMemory() const;
     size_t getFreeMemory() const;
+    size_t getMaxMemory() const;
+    size_t getAllocatedSlabMemory() const;
 
 private:
     struct SlabClass{
@@ -63,10 +66,14 @@ private:
     std::vector<SlabClass> slab_classes_;
     // 指针到Slab类的映射
     std::unordered_map<void*, size_t> ptr_to_class_;
+    // 新增：记录所有分配的Slab基地址
+    std::vector<void*> slab_pages_;
 
     size_t max_memory_;
-    size_t used_memory_;
+    size_t allocated_slab_memory_;  // 已分配的Slab内存总和
+    size_t used_object_memory_;     // 实际使用的对象内存总和
     const float growth_factor_;
+
     // 1MB的Slab页
     static constexpr size_t SLAB_SIZE = 1024 * 1024; 
     mutable std::mutex mutex_;
