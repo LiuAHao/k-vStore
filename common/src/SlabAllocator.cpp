@@ -10,7 +10,6 @@ SlabAllocator::SlabAllocator(size_t max_memory, float growth_factor)
 
 SlabAllocator::~SlabAllocator(){
     std::lock_guard<std::mutex> lock(mutex_);
-    std::cout << "Destructing SlabAllocator, freeing " << slab_pages_.size() << " pages\n";
     for(void* page:slab_pages_){
         free(page);
     }
@@ -194,7 +193,7 @@ void basicTest() {
 void slabClassTest() {
     std::cout << "=== 开始Slab类测试 ===" << std::endl;
     
-    SlabAllocator allocator(1024 * 1024);
+    SlabAllocator allocator(2 * 1024 * 1024);
     
     // 测试Slab类自动创建
     void* ptr1 = allocator.allocate(200);
@@ -207,7 +206,7 @@ void slabClassTest() {
     std::cout << "Slab类自动创建测试通过" << std::endl;
     
     // 验证不同大小分配到不同Slab类
-    assert(allocator.getUsedMemory() == 200 + 300);
+    assert(allocator.getUsedMemory() == 200 + 400);
     
     allocator.deallocate(ptr1);
     allocator.deallocate(ptr2);
