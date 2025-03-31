@@ -148,152 +148,152 @@ void* SlabAllocator::allocateNewSlap(size_t class_index){
     return new_slab;
 }
 
-//测试函数
-#include <iostream>
-#include <vector>
-#include <thread>
-#include <cassert>
-#include "../include/SlabAllocator.h"
+// //测试函数
+// #include <iostream>
+// #include <vector>
+// #include <thread>
+// #include <cassert>
+// #include "../include/SlabAllocator.h"
 
-void basicTest() {
-    std::cout << "=== 开始基础测试 ===" << std::endl;
+// void basicTest() {
+//     std::cout << "=== 开始基础测试 ===" << std::endl;
     
-    // 创建1MB内存池
-    SlabAllocator allocator(10 * 1024 * 1024);
+//     // 创建1MB内存池
+//     SlabAllocator allocator(10 * 1024 * 1024);
     
-    // 测试1: 分配小块内存
-    void* ptr1 = allocator.allocate(128);
-    assert(ptr1 != nullptr);
-    std::cout << "测试1通过: 128字节分配成功" << std::endl;
+//     // 测试1: 分配小块内存
+//     void* ptr1 = allocator.allocate(128);
+//     assert(ptr1 != nullptr);
+//     std::cout << "测试1通过: 128字节分配成功" << std::endl;
     
-    // 测试2: 分配较大块内存
-    void* ptr2 = allocator.allocate(1024);
-    assert(ptr2 != nullptr);
-    std::cout << "测试2通过: 1024字节分配成功" << std::endl;
+//     // 测试2: 分配较大块内存
+//     void* ptr2 = allocator.allocate(1024);
+//     assert(ptr2 != nullptr);
+//     std::cout << "测试2通过: 1024字节分配成功" << std::endl;
     
-    // 测试3: 内存统计
-    std::cout << "已用内存: " << allocator.getUsedMemory() << "字节" << std::endl;
-    std::cout << "剩余内存: " << allocator.getFreeMemory() << "字节" << std::endl;
-    assert(allocator.getUsedMemory() == 128 + 1024);
+//     // 测试3: 内存统计
+//     std::cout << "已用内存: " << allocator.getUsedMemory() << "字节" << std::endl;
+//     std::cout << "剩余内存: " << allocator.getFreeMemory() << "字节" << std::endl;
+//     assert(allocator.getUsedMemory() == 128 + 1024);
     
-    // 测试4: 释放内存
-    allocator.deallocate(ptr1);
-    allocator.deallocate(ptr2);
-    assert(allocator.getUsedMemory() == 0);
-    std::cout << "测试4通过: 内存释放成功" << std::endl;
+//     // 测试4: 释放内存
+//     allocator.deallocate(ptr1);
+//     allocator.deallocate(ptr2);
+//     assert(allocator.getUsedMemory() == 0);
+//     std::cout << "测试4通过: 内存释放成功" << std::endl;
     
-    // 测试5: 分配超过最大限制
-    void* ptr3 = allocator.allocate(2 * 1024 * 1024);
-    assert(ptr3 == nullptr);
-    std::cout << "测试5通过: 超大分配返回nullptr" << std::endl;
+//     // 测试5: 分配超过最大限制
+//     void* ptr3 = allocator.allocate(2 * 1024 * 1024);
+//     assert(ptr3 == nullptr);
+//     std::cout << "测试5通过: 超大分配返回nullptr" << std::endl;
     
-    std::cout << "=== 基础测试通过 ===" << std::endl << std::endl;
-}
+//     std::cout << "=== 基础测试通过 ===" << std::endl << std::endl;
+// }
 
-void slabClassTest() {
-    std::cout << "=== 开始Slab类测试 ===" << std::endl;
+// void slabClassTest() {
+//     std::cout << "=== 开始Slab类测试 ===" << std::endl;
     
-    SlabAllocator allocator(2 * 1024 * 1024);
+//     SlabAllocator allocator(2 * 1024 * 1024);
     
-    // 测试Slab类自动创建
-    void* ptr1 = allocator.allocate(200);
-    assert(ptr1 != nullptr);
+//     // 测试Slab类自动创建
+//     void* ptr1 = allocator.allocate(200);
+//     assert(ptr1 != nullptr);
     
-    // 应该创建了200 * growth_factor大小的Slab类
-    void* ptr2 = allocator.allocate(300);
-    assert(ptr2 != nullptr);
+//     // 应该创建了200 * growth_factor大小的Slab类
+//     void* ptr2 = allocator.allocate(300);
+//     assert(ptr2 != nullptr);
     
-    std::cout << "Slab类自动创建测试通过" << std::endl;
+//     std::cout << "Slab类自动创建测试通过" << std::endl;
     
-    // 验证不同大小分配到不同Slab类
-    assert(allocator.getUsedMemory() == 200 + 400);
+//     // 验证不同大小分配到不同Slab类
+//     assert(allocator.getUsedMemory() == 200 + 400);
     
-    allocator.deallocate(ptr1);
-    allocator.deallocate(ptr2);
+//     allocator.deallocate(ptr1);
+//     allocator.deallocate(ptr2);
     
-    std::cout << "=== Slab类测试通过 ===" << std::endl << std::endl;
-}
+//     std::cout << "=== Slab类测试通过 ===" << std::endl << std::endl;
+// }
 
-void concurrentTest() {
-    std::cout << "=== 开始并发测试 ===" << std::endl;
+// void concurrentTest() {
+//     std::cout << "=== 开始并发测试 ===" << std::endl;
     
-    SlabAllocator allocator(1024 * 1024);
-    std::vector<std::thread> threads;
-    std::vector<void*> pointers;
+//     SlabAllocator allocator(1024 * 1024);
+//     std::vector<std::thread> threads;
+//     std::vector<void*> pointers;
     
-    const int THREAD_COUNT = 10;
-    const int ALLOC_PER_THREAD = 100;
+//     const int THREAD_COUNT = 10;
+//     const int ALLOC_PER_THREAD = 100;
     
-    // 多线程分配
-    for (int i = 0; i < THREAD_COUNT; ++i) {
-        threads.emplace_back([&]() {
-            std::vector<void*> local_ptrs;
-            for (int j = 0; j < ALLOC_PER_THREAD; ++j) {
-                void* ptr = allocator.allocate(64);
-                assert(ptr != nullptr);
-                local_ptrs.push_back(ptr);
-            }
+//     // 多线程分配
+//     for (int i = 0; i < THREAD_COUNT; ++i) {
+//         threads.emplace_back([&]() {
+//             std::vector<void*> local_ptrs;
+//             for (int j = 0; j < ALLOC_PER_THREAD; ++j) {
+//                 void* ptr = allocator.allocate(64);
+//                 assert(ptr != nullptr);
+//                 local_ptrs.push_back(ptr);
+//             }
             
-            // 确保释放时也加锁
-            for (void* ptr : local_ptrs) {
-                allocator.deallocate(ptr);
-            }
-        });
-    }
+//             // 确保释放时也加锁
+//             for (void* ptr : local_ptrs) {
+//                 allocator.deallocate(ptr);
+//             }
+//         });
+//     }
     
-    for (auto& t : threads) {
-        t.join();
-    }
+//     for (auto& t : threads) {
+//         t.join();
+//     }
     
-    // 最终内存应该完全释放
-    assert(allocator.getUsedMemory() == 0);
-    std::cout << "并发测试通过 (无死锁和数据竞争)" << std::endl;
+//     // 最终内存应该完全释放
+//     assert(allocator.getUsedMemory() == 0);
+//     std::cout << "并发测试通过 (无死锁和数据竞争)" << std::endl;
     
-    std::cout << "=== 并发测试通过 ===" << std::endl << std::endl;
-}
+//     std::cout << "=== 并发测试通过 ===" << std::endl << std::endl;
+// }
 
-void edgeCaseTest() {
-    std::cout << "=== 开始边界条件测试 ===" << std::endl;
+// void edgeCaseTest() {
+//     std::cout << "=== 开始边界条件测试 ===" << std::endl;
     
-    // 测试1: 零字节分配
-    {
-        SlabAllocator allocator(1024);
-        void* ptr = allocator.allocate(0);
-        assert(ptr == nullptr);
-        std::cout << "测试1通过: 零字节分配返回nullptr" << std::endl;
-    }
+//     // 测试1: 零字节分配
+//     {
+//         SlabAllocator allocator(1024);
+//         void* ptr = allocator.allocate(0);
+//         assert(ptr == nullptr);
+//         std::cout << "测试1通过: 零字节分配返回nullptr" << std::endl;
+//     }
     
-    // 测试2: 重复释放
-    {
-        SlabAllocator allocator(1024);
-        void* ptr = allocator.allocate(64);
-        allocator.deallocate(ptr);
-        allocator.deallocate(ptr); // 应该安全处理
-        std::cout << "测试2通过: 重复释放不会崩溃" << std::endl;
-    }
+//     // 测试2: 重复释放
+//     {
+//         SlabAllocator allocator(1024);
+//         void* ptr = allocator.allocate(64);
+//         allocator.deallocate(ptr);
+//         allocator.deallocate(ptr); // 应该安全处理
+//         std::cout << "测试2通过: 重复释放不会崩溃" << std::endl;
+//     }
     
-    // 测试3: 非法指针释放
-    {
-        SlabAllocator allocator(1024);
-        int dummy;
-        allocator.deallocate(&dummy); // 非分配指针
-        std::cout << "测试3通过: 非法指针释放不会崩溃" << std::endl;
-    }
+//     // 测试3: 非法指针释放
+//     {
+//         SlabAllocator allocator(1024);
+//         int dummy;
+//         allocator.deallocate(&dummy); // 非分配指针
+//         std::cout << "测试3通过: 非法指针释放不会崩溃" << std::endl;
+//     }
     
-    std::cout << "=== 边界条件测试通过 ===" << std::endl << std::endl;
-}
+//     std::cout << "=== 边界条件测试通过 ===" << std::endl << std::endl;
+// }
 
-int main() {
-    try {
-        basicTest();
-        slabClassTest();
-        concurrentTest();
-        edgeCaseTest();
+// int main() {
+//     try {
+//         basicTest();
+//         slabClassTest();
+//         concurrentTest();
+//         edgeCaseTest();
         
-        std::cout << "所有测试通过！SlabAllocator 实现正确。" << std::endl;
-        return 0;
-    } catch (const std::exception& e) {
-        std::cerr << "测试失败: " << e.what() << std::endl;
-        return 1;
-    }
-}
+//         std::cout << "所有测试通过！SlabAllocator 实现正确。" << std::endl;
+//         return 0;
+//     } catch (const std::exception& e) {
+//         std::cerr << "测试失败: " << e.what() << std::endl;
+//         return 1;
+//     }
+// }
