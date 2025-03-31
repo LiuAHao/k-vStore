@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <string>
 #include <mutex>
+#include <vector>
 
 /*
 TTL过期机制实现
@@ -24,7 +25,7 @@ public:
     bool isExpired(const std::string& key)const;
     // 删除键的TTL记录
     void removeTTL(const std::string& key);
-    // 清理所有过期键
+    // 主动清理所有过期键
     void cleanupExpired();
 
 private:
