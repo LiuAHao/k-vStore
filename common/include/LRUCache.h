@@ -7,7 +7,7 @@
 template<typename K, typename V>
 class LRUCache {
 public:
-    explicit LRUCache(size_t capcacity):capcacity_(capcacity);
+    explicit LRUCache(size_t capacity):capacity_(capacity){}
     // 获取键值，如果存在则提升到最近使用
     bool get(const K& key, V& value);
     
@@ -21,7 +21,7 @@ public:
     size_t size() const;
 private:
     //List容器，底层实现为双向链表
-    using ListType = std::list<std::pair<K,V>; 
+    using ListType = std::list<std::pair<K,V>>; 
     using ListIter = typename ListType::iterator;
 
     size_t capacity_;
