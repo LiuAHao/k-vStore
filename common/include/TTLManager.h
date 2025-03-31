@@ -17,6 +17,9 @@ class TTLManager {
 public:
     using TimePoint = std::chrono::system_clock::time_point;
 
+    static TimePoint msToimePoint(long long ttl_ms){
+        return std::chrono::system_clock::now() + std::chrono::milliseconds(ttl_ms);
+    }
     // 设置键的TTL
     void setTTL(const std::string& key, TimePoint expire_time);
     // 获取键的剩余生存时间(毫秒)
