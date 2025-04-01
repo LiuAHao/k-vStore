@@ -1,17 +1,17 @@
 #pragma once
 
-#include<string>
-#include<memory>
+#include <string.h>
+#include <memory>
 #include "SlabAllocator.h"
 #include "TTLManager.h"
 #include "LRUCache.h"
+#include "Value.h"
+
+class LRUCache;
 
 class KVStore{
 public:
-    struct Value{
-        void* data;
-        size_t size;
-    };
+    using Value = ::Value; 
 
     //初始化KV存储，指定最大内存和LRU容量
     KVStore(size_t max_memory, size_t lru_capacity);
@@ -36,11 +36,9 @@ public:
 private:
     std::unique_ptr<SlabAllocator> allocator_;
     std::unique_ptr<TTLManager> ttl_manager_;
-    std::unique_ptr<LRUCache<std::string, Value>> lru_cache_;
+    std::unique_ptr<LRUCache> lru_cache_;
     // 实际存储(简化版，实际可能需要更复杂的结构)
     std::unordered_map<std::string, Value> storage_;
-    mutable std::mutex storage_mutex_;
-    // 从存储中移除键值对(不通知LRU)
-    void removeFromStorage(const std::string& key);
+    mutable std::recursive_mutex storage_mutex_;
 
 };
