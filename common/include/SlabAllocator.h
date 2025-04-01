@@ -70,10 +70,10 @@ private:
     std::vector<void*> slab_pages_;
 
     size_t max_memory_;
+    const float growth_factor_;
     size_t allocated_slab_memory_;  // 已分配的Slab内存总和
     size_t used_object_memory_;     // 实际使用的对象内存总和
-    const float growth_factor_;
-
+    
     // 1MB的Slab页
     static constexpr size_t SLAB_SIZE = 1024 * 1024; 
     mutable std::mutex mutex_;
