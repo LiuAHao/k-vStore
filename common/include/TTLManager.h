@@ -29,7 +29,7 @@ public:
     // 删除键的TTL记录
     void removeTTL(const std::string& key);
     // 主动清理所有过期键
-    void cleanupExpired();
+    std::vector<std::string> cleanupExpired();
 
 private:
     mutable std::mutex mutex_;
