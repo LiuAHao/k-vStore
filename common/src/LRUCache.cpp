@@ -1,7 +1,17 @@
 #include"../include/LRUCache.h"
 
-template<typename K, typename V>
-bool LRUCache<K, V>::get(const K& key, V& value){
+
+
+//编译器找到了 LRUCache 模板类的声明，但链接器找不到其实现。这是典型的 模板类分离编译问题。
+//声明模板类实现
+
+
+LRUCache::LRUCache(size_t capacity):capacity_(capacity){
+
+    std::cout << capacity_ << std::endl;
+}
+
+bool LRUCache::get(const std::string& key, Value& value){
     //加锁防止冲突
     std::lock_guard<std::mutex> lock(mutex_);
 
@@ -16,8 +26,7 @@ bool LRUCache<K, V>::get(const K& key, V& value){
     return true;
 }
 
-template<typename K, typename V>
-void LRUCache<K, V>::put(const K& key, const V& value){
+void LRUCache::put(const std::string& key, const Value& value){
     if(capacity_ == 0) return;
     std::lock_guard<std::mutex> lock(mutex_);
 
@@ -40,8 +49,7 @@ void LRUCache<K, V>::put(const K& key, const V& value){
     lookup_[key] = items_.begin();
 }
     
-template<typename K, typename V>
-void LRUCache<K, V>::erase(const K& key){
+void LRUCache::erase(const std::string& key){
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = lookup_.find(key);
     if(it != lookup_.end()){
@@ -51,8 +59,7 @@ void LRUCache<K, V>::erase(const K& key){
     
 }
     
-template<typename K, typename V>
-size_t LRUCache<K, V>::size() const{
+size_t LRUCache::size() const{
     std::lock_guard<std::mutex> lock(mutex_);
     return items_.size();
 }
