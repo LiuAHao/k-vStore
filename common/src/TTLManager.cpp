@@ -25,7 +25,7 @@ bool TTLManager::isExpired(const std::string& key)const{
     std::lock_guard<std::mutex> lock(mutex_);
 
     auto it = TTL_map_.find(key);
-    if(it == TTL_map_.end())return true;
+    if(it == TTL_map_.end())return false;
 
     return std::chrono::system_clock::now() >= it->second;
 }
@@ -39,18 +39,19 @@ void TTLManager::removeTTL(const std::string& key){
     TTL_map_.erase(it);
 }
 
-void TTLManager::cleanupExpired(){
+std::vector<std::string> TTLManager::cleanupExpired(){
     std::lock_guard<std::mutex> lock(mutex_);
     auto now = std::chrono::system_clock::now();
     std::vector<std::string> to_clean;
     for(auto& t:TTL_map_){
-        if(t.second <= std::chrono::system_clock::now()){
+        if(t.second <= now){
             to_clean.push_back(t.first);
         }
     }
-    for(int i = 0; i < to_clean.size(); i++){
+    for(size_t i = 0; i < to_clean.size(); i++){
         TTL_map_.erase(to_clean[i]);
     }
+    return to_clean;
 }
     
 
