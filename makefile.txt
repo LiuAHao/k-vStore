@@ -1,0 +1,45 @@
+在 Makefile 中，$@ 和 $^ 是特殊的 自动化变量（Automatic Variables），它们会在规则执行时自动展开为特定的值。以下是它们的详细解释：
+
+1. $@：当前规则的目标（Target）文件名
+含义：表示当前规则中 冒号左边 的目标文件。
+示例：
+MakeFile
+kvstore_test: test_kv_store.o LRUCache.o
+    g++ -o $@ $^
+当构建 kvstore_test 时，$@ 会被替换为 kvstore_test。
+等效于：
+MakeFile
+g++ -o kvstore_test test_kv_store.o LRUCache.o
+2. $^：当前规则的所有依赖文件列表
+含义：表示当前规则中 冒号右边 列出的所有依赖文件（去重后的列表）。
+示例：
+MakeFile
+kvstore_test: test_kv_store.o LRUCache.o SlabAllocator.o
+    g++ -o $@ $^
+$^ 会被替换为 test_kv_store.o LRUCache.o SlabAllocator.o。
+等效于：
+MakeFile
+g++ -o kvstore_test test_kv_store.o LRUCache.o SlabAllocator.o
+其他常用自动化变量
+变量	含义
+$<	当前规则的 第一个依赖文件（常用于单文件依赖的规则）。
+$?	比目标文件 更新 的所有依赖文件列表（用于条件判断）。
+$*	匹配通配符 % 的部分（例如 %.o: %.c 中，$* 表示文件名不带扩展名）。
+
+在 Makefile 中，%.o: %.cpp 是一种 模式规则（Pattern Rule），它定义了如何将 .cpp 源文件编译为 .o 目标文件的通用规则。以下是详细解释：
+
+1. 基本语法
+MakeFile
+%.o: %.cpp
+    $(CXX) $(CXXFLAGS) -c $< -o $@
+%.o：匹配所有 .o 目标文件（% 是通配符）。
+%.cpp：匹配对应的 .cpp 源文件（与 %.o 中的 % 部分相同）。
+$<：自动化变量，表示规则的第一个依赖文件（这里是 %.cpp）。
+$@：自动化变量，表示当前目标文件（这里是 %.o）。
+2. 工作原理
+当 Makefile 需要构建某个 .o 文件时（例如 test_kv_store.o），会自动匹配这条规则：
+
+将 % 替换为 test_kv_store，得到依赖文件 test_kv_store.cpp。
+执行编译命令：
+Bash
+g++ -std=c++17 -Wall -c test_kv_store.cpp -o test_kv_store.o
