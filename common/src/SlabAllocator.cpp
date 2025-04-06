@@ -16,19 +16,27 @@ SlabAllocator::~SlabAllocator(){
 }
 
 
-void* SlabAllocator::allocate(size_t size){
-    //如果分配的内存大于页大小也视为错误
-    if(size == 0 || size > max_memory_ || size > SLAB_SIZE)return nullptr;
+void* SlabAllocator::allocate(size_t size) {
+    if(size == 0 || size > max_memory_ || size > SLAB_SIZE) {
+        return nullptr;
+    }
 
     size_t class_index = findSlabClass(size);
-    SlabClass& sc = slab_classes_[class_index];
+    if(class_index >= slab_classes_.size()) {
+        return nullptr;
+    }
 
     std::lock_guard<std::mutex> lock(mutex_);
+    SlabClass& sc = slab_classes_[class_index];
 
-    if(sc.free_list.empty()){
+    if(sc.free_list.empty()) {
+        // 只尝试分配一次
         void* new_slab = allocateNewSlap(class_index);
-        if(!new_slab) return nullptr;
+        if(!new_slab) {
+            return nullptr;
+        }
     }
+
     void* ptr = sc.free_list.front();
     sc.free_list.pop_front();
     ptr_to_class_[ptr] = class_index;
@@ -38,22 +46,58 @@ void* SlabAllocator::allocate(size_t size){
 }
 
 
-void SlabAllocator::deallocate(void* ptr){
-    if(!ptr)return;
+void SlabAllocator::deallocate(void* ptr) {
+    if(!ptr) return;
 
     std::lock_guard<std::mutex> lock(mutex_);
 
     auto it = ptr_to_class_.find(ptr);
-    if(it == ptr_to_class_.end()){
-        //未知非法指针
-        return;
-    }
+    if(it == ptr_to_class_.end()) return;
+    
     size_t class_index = it->second;
     SlabClass& sc = slab_classes_[class_index];
-    //把空闲块放回空闲列表
+    
+    // 先记录原空闲槽数量
+    size_t prev_free_count = sc.free_list.size();
+    
     sc.free_list.push_front(ptr);
     ptr_to_class_.erase(it);
     used_object_memory_ -= sc.item_size;
+
+    // 如果从0变为1个空闲槽，可能需要回收页
+    if(prev_free_count == 0 && sc.free_list.size() == 1) {
+        tryReleaseEmptySlab(class_index);
+    }
+    // 如果所有槽都空闲了，确保回收
+    else if(sc.free_list.size() == sc.item_per_slab) {
+        tryReleaseEmptySlab(class_index);
+    }
+}
+
+void SlabAllocator::tryReleaseEmptySlab(size_t class_index) {
+    SlabClass& sc = slab_classes_[class_index];
+    if(sc.free_list.size() != sc.item_per_slab) return;
+
+    // 找到包含这些空闲块的slab页
+    for(auto it = slab_pages_.begin(); it != slab_pages_.end(); ++it) {
+        char* start = static_cast<char*>(*it);
+        char* end = start + SLAB_SIZE;
+        char* first_item = static_cast<char*>(sc.free_list.front());
+        
+        if(first_item >= start && first_item < end) {
+            // 先移除所有指向该页的槽记录
+            for(auto& item : sc.free_list) {
+                ptr_to_class_.erase(item);
+            }
+            
+            // 释放内存并更新统计
+            ::free(*it);
+            allocated_slab_memory_ -= SLAB_SIZE;
+            slab_pages_.erase(it);
+            sc.free_list.clear();
+            return;
+        }
+    }
 }
 
 size_t SlabAllocator::getUsedMemory() const{
@@ -78,13 +122,12 @@ size_t SlabAllocator::getMaxMemory() const{
 }
 
 
+
+
 size_t SlabAllocator::findSlabClass(size_t size){
     //返回第一个大于它的内存块
     for(size_t i = 0; i < slab_classes_.size(); i++){
         if(slab_classes_[i].item_size >= size){
-            if(slab_classes_[i].free_list.empty()){
-                allocateNewSlap(i);
-            }
             return i;
         }
     }
