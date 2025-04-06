@@ -10,9 +10,10 @@ class KVStore;
 
 class LRUCache {
 public:
+    using Value = ::Value;
     LRUCache(size_t capacity);
     // 获取键值，如果存在则提升到最近使用
-    bool get(const std::string& key, Value& value);
+    Value get(const std::string& key);
     
     // 添加键值，如果已存在则更新
     void put(const std::string& key, const Value& value);
@@ -23,7 +24,7 @@ public:
     // 获取缓存大小
     size_t size() const;
 private:
-    using Value = ::Value;
+    
     //List容器，底层实现为双向链表
     using ListType = std::list<std::pair<std::string, Value>>; 
     using ListIter = typename ListType::iterator;
