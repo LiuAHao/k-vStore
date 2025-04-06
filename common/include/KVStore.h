@@ -20,8 +20,9 @@ public:
     // 存储键值对，可选TTL(毫秒)
     bool set(const std::string& key, const void* value, size_t size, long long ttl_ms = 0);
     
+    Value put(const std::string& key, const Value& value);
     // 获取键值对
-    bool get(const std::string& key, Value& value);
+    Value get(const std::string& key);
     
     // 删除键值对
     bool del(const std::string& key);
