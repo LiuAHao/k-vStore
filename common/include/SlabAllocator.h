@@ -77,4 +77,7 @@ private:
     // 1MB的Slab页
     static constexpr size_t SLAB_SIZE = 1024 * 1024; 
     mutable std::mutex mutex_;
+
+    // 添加新方法声明
+    void tryReleaseEmptySlab(size_t class_index);
 };
