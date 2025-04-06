@@ -7,23 +7,24 @@
 
 
 LRUCache::LRUCache(size_t capacity):capacity_(capacity){
-
-    std::cout << capacity_ << std::endl;
 }
 
-bool LRUCache::get(const std::string& key, Value& value){
-    //加锁防止冲突
+Value LRUCache::get(const std::string& key){
     std::lock_guard<std::mutex> lock(mutex_);
 
     auto it = lookup_.find(key);
-    if(it == lookup_.end())return false;
+    if(it == lookup_.end()){
+        std::cout << "key not found" << std::endl;
+        return Value();
+    }
 
-    //将查到的节点放到列表前端，表示最近使用;
-    //splice表示剪切一部分到另一部分，下面为直接将it的值剪到头部
+    // 安全获取缓存值
+    const Value& cached = it->second->second;
+
+    // 更新LRU顺序
     items_.splice(items_.begin(), items_, it->second);
-    //更新value的值
-    value = it->second->second;
-    return true;
+    
+    return cached;
 }
 
 void LRUCache::put(const std::string& key, const Value& value){
@@ -34,18 +35,19 @@ void LRUCache::put(const std::string& key, const Value& value){
     if(it != lookup_.end()){
         // 键已存在，更新值并移动到前端
         items_.splice(items_.begin(), items_, it->second);
-        it->second->second = value;
+        it->second->second = value;  // Value 的赋值操作会处理内存
         return;
     }
 
     // 键不存在，需要插入新项
     if(items_.size() >= capacity_){
-        // 移除最久未使用的项,不调用原函数的erase()会导致死锁
-        lookup_.erase(items_.back().first);
+        // 移除最久未使用的项
+        const auto& last_item = items_.back();
+        lookup_.erase(last_item.first);
         items_.pop_back();
     }
 
-    items_.emplace_front(key,value);
+    items_.emplace_front(key, value);
     lookup_[key] = items_.begin();
 }
     
