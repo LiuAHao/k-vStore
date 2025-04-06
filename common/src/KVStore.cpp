@@ -127,31 +127,4 @@ size_t KVStore::getFreeMemory() const{
     return allocator_->getFreeMemory();
 }
 
-Value KVStore::put(const std::string& key, const Value& value) {
-    std::lock_guard<std::recursive_mutex> lock(storage_mutex_);
-
-    // 分配新内存并复制数据
-    void* new_ptr = allocator_->allocate(value.size);
-    if(!new_ptr) return Value();  // 分配失败返回空Value
-
-    memcpy(new_ptr, value.data, value.size);
-
-    Value new_value;
-    new_value.data = new_ptr;
-    new_value.size = value.size;
-
-    // 处理已存在的键
-    auto it = storage_.find(key);
-    if(it != storage_.end()){
-        Value old_value = it->second;
-        it->second = new_value;
-        lru_cache_->put(key, new_value);
-        return old_value;
-    }
-
-    // 插入新键值对
-    storage_[key] = new_value;
-    lru_cache_->put(key, new_value);
-    return Value();  // 新插入返回空Value
-}
 
